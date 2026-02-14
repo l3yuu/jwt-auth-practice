@@ -13,19 +13,21 @@ const app = express();
 // --- CORS CONFIGURATION ---
 const allowedOrigins = [
     'http://localhost:5173',
-    process.env.FRONTEND_URL 
+    process.env.FRONTEND_URL // Make sure this is set in Vercel: https://your-frontend.vercel.app
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
+        
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
             return callback(new Error(msg), false);
         }
         return callback(null, true);
     },
-    credentials: true
+    credentials: true // This is crucial for cookies
 }));
 // --------------------------
 
@@ -57,6 +59,7 @@ app.post('/register', async (req, res) => {
         await newUser.save();
         res.status(201).json({ message: "User registered successfully!" });
     } catch (error) {
+        console.error("REGISTRATION ERROR:", error);
         res.status(500).json({ message: "Error registering user" });
     }
 });
@@ -67,32 +70,39 @@ app.post('/login', async (req, res) => {
         const user = await User.findOne({ username: req.body.username });
         
         if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-            return res.status(401).send("Invalid credentials");
+            return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const token = jwt.sign({ user: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+        // FIXED: Removed partitioned, added path
         res.cookie('token', token, {
             httpOnly: true,    // Prevents JS from reading the cookie
             secure: true,      // Required for HTTPS in production
             sameSite: 'none',  // Vital for cross-site (Vercel-to-Vercel) cookies
-            partitioned: true, // Fix for Chrome's modern Privacy Sandbox
+            path: '/',         // Make cookie available for all paths
             maxAge: 3600000    // 1 hour
-        }).json({ message: "Logged in successfully" });
+        }).json({ 
+            message: "Logged in successfully",
+            user: user.username 
+        });
     } catch (error) {
         console.error("LOGIN ERROR:", error);
         res.status(500).json({ message: "Server error during login" });
     }
 });
 
+// Logout route
 app.post('/logout', (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
         secure: true,
-        sameSite: 'none'
+        sameSite: 'none',
+        path: '/'
     }).json({ message: "Logged out successfully" });
 });
 
+// Profile route
 app.get('/api/user/profile', (req, res) => {
     const token = req.cookies.token;
 
@@ -107,17 +117,19 @@ app.get('/api/user/profile', (req, res) => {
             user: decoded 
         });
     } catch (err) {
+        console.error("TOKEN VERIFICATION ERROR:", err);
         res.status(401).json({ message: "Invalid token" });
     }
+});
+
+// Health check
+app.get('/', (req, res) => {
+    res.send("Backend is running and ready for requests!");
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server ready at http://localhost:${PORT}`);
-});
-
-app.get('/', (req, res) => {
-    res.send("Backend is running and ready for requests!");
 });
 
 module.exports = app;
