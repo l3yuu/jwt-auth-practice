@@ -27,7 +27,7 @@ const Profile: React.FC<ProfileProps> = ({ setAuth }) => {
         setProfile(data);
       } catch {
         setError('Failed to fetch profile. Are you logged in?');
-        setAuth(false); // If fetch fails, ensure frontend knows they aren't auth'd
+        setAuth(false); 
       }
     };
 
@@ -36,10 +36,7 @@ const Profile: React.FC<ProfileProps> = ({ setAuth }) => {
 
   const handleLogout = async () => {
     try {
-      // 1. Tell the backend to clear the HttpOnly cookie
       await api.post('/logout');
-      
-      // 2. Update the frontend state
       setAuth(false);
       
       alert('Logged out successfully');

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
-// Define props to receive the state setter from App.tsx
 interface LoginProps {
   setAuth: (auth: boolean) => void;
 }
@@ -15,10 +14,7 @@ const Login: React.FC<LoginProps> = ({ setAuth }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // The browser automatically stores the HttpOnly cookie from the response
       await api.post('/login', { username, password });
-      
-      // Update global auth state immediately
       setAuth(true);
       
       alert('Login Successful!');
