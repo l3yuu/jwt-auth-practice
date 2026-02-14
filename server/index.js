@@ -73,13 +73,14 @@ app.post('/login', async (req, res) => {
         const token = jwt.sign({ user: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         res.cookie('token', token, {
-            httpOnly: true,
-            secure: true,   
-            sameSite: 'none',  
-            partitioned: true, 
-            maxAge: 3600000 
+            httpOnly: true,    // Prevents JS from reading the cookie
+            secure: true,      // Required for HTTPS in production
+            sameSite: 'none',  // Vital for cross-site (Vercel-to-Vercel) cookies
+            partitioned: true, // Fix for Chrome's modern Privacy Sandbox
+            maxAge: 3600000    // 1 hour
         }).json({ message: "Logged in successfully" });
     } catch (error) {
+        console.error("LOGIN ERROR:", error);
         res.status(500).json({ message: "Server error during login" });
     }
 });
@@ -113,6 +114,10 @@ app.get('/api/user/profile', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server ready at http://localhost:${PORT}`);
+});
+
+app.get('/', (req, res) => {
+    res.send("Backend is running and ready for requests!");
 });
 
 module.exports = app;
