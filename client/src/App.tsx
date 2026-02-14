@@ -1,77 +1,52 @@
-import React, { useState } from 'react';
-import api from './services/api'; 
-import type { AuthResponse } from './types';
-import Profile from './components/Profile'; 
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './components/Login';
+import Profile from './components/Profile';
+import ProtectedRoute from './components/ProtectedRoute';
+import Register from './components/Register';
+import api from './services/api';
 
 const App: React.FC = () => {
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    const token = localStorage.getItem('token');
-    return !!token; 
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Check if the user is already logged in via cookie on mount
+useEffect(() => {
+  const checkAuth = async () => {
     try {
-      // Use 'api' service here
-      const { data } = await api.post<AuthResponse>('/login', {
-        username,
-        password,
-      });
-
-      localStorage.setItem('token', data.token);
-      setIsLoggedIn(true);
-      alert('Login Successful!');
-    } catch (error) {
-      console.error("Login failed", error);
-      alert('Invalid credentials');
+      // If this succeeds, the user is logged in
+      await api.get('/api/user/profile');
+      setIsAuthenticated(true);
+    } catch {
+      setIsAuthenticated(false); // This moves you past the "Loading" screen
     }
   };
+  checkAuth();
+}, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsLoggedIn(false);
-    setUsername('');
-    setPassword('');
-  };
+  // Show nothing while checking authentication status
+  if (isAuthenticated === null) return <div>Loading...</div>;
 
   return (
-    <div className="app-container" style={{ padding: '2rem', textAlign: 'center' }}>
-      <h1>JWT Auth Practice</h1>
+    <Router>
+      <div className="app-container" style={{ padding: '2rem', textAlign: 'center' }}>
+        <h1>JWT Auth Practice</h1>
+        
+        <Routes>
+          {/* Pass setIsAuthenticated so Login can update the global state */}
+          <Route path="/" element={
+            !isAuthenticated ? <Login setAuth={setIsAuthenticated} /> : <Navigate to="/profile" />
+          } />
+          <Route path="/register" element={<Register />} />
 
-      {!isLoggedIn ? (
-        <div className="auth-container">
-          <h2>Login</h2>
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px', margin: '0 auto' }}>
-            <input 
-              type="text" 
-              value={username} 
-              onChange={(e) => setUsername(e.target.value)} 
-              placeholder="Username" 
-            />
-            <input 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              placeholder="Password" 
-            />
-            <button type="submit">Login</button>
-          </form>
-        </div>
-      ) : (
-        <div className="dashboard">
-          <Profile />
-          <button 
-            onClick={handleLogout} 
-            style={{ marginTop: '20px', backgroundColor: '#ff4d4d', color: 'white', border: 'none', padding: '10px 20px', cursor: 'pointer' }}
-          >
-            Logout
-          </button>
-        </div>
-      )}
-    </div>
+          {/* Protected Routes Group */}
+          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
+            <Route path="/profile" element={<Profile setAuth={setIsAuthenticated} />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </Router>
   );
 };
 
