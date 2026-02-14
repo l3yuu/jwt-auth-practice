@@ -3,15 +3,34 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose'); // New: Mongoose for MongoDB
+const mongoose = require('mongoose');
 require('dotenv').config();
 
-const User = require('./models/User'); // New: Import User Schema
+const User = require('./models/User');
 
 const app = express();
+
+// --- CORS CONFIGURATION ---
+const allowedOrigins = [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL 
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true
+}));
+// --------------------------
+
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
@@ -23,7 +42,6 @@ app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Check DB for existing user
         const userExists = await User.findOne({ username });
         if (userExists) {
             return res.status(400).json({ message: "User already exists" });
@@ -31,7 +49,6 @@ app.post('/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Save new user to MongoDB
         const newUser = new User({
             username,
             password: hashedPassword
@@ -47,7 +64,6 @@ app.post('/register', async (req, res) => {
 // Login route
 app.post('/login', async (req, res) => {
     try {
-        // Find user in MongoDB
         const user = await User.findOne({ username: req.body.username });
         
         if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
@@ -58,8 +74,8 @@ app.post('/login', async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: true, // Set to true in production
-            sameSite: 'none',
+            secure: true,   
+            sameSite: 'none', 
             maxAge: 3600000 
         }).json({ message: "Logged in successfully" });
     } catch (error) {
@@ -68,7 +84,11 @@ app.post('/login', async (req, res) => {
 });
 
 app.post('/logout', (req, res) => {
-    res.clearCookie('token').json({ message: "Logged out successfully" });
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none'
+    }).json({ message: "Logged out successfully" });
 });
 
 app.get('/api/user/profile', (req, res) => {
