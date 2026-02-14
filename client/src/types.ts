@@ -1,4 +1,3 @@
-// client/src/types.ts
 export interface AuthResponse {
   token: string;
   user?: {
