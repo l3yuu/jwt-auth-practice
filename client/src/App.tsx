@@ -5,8 +5,6 @@ import Profile from './components/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import Register from './components/Register';
 import api from './services/api';
-import './styles/Auth.css';
-import './styles/Profile.css';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
