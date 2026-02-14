@@ -58,8 +58,8 @@ app.post('/login', async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false, // Set to true in production
-            sameSite: 'lax',
+            secure: true, // Set to true in production
+            sameSite: 'none',
             maxAge: 3600000 
         }).json({ message: "Logged in successfully" });
     } catch (error) {
