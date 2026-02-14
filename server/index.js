@@ -13,21 +13,19 @@ const app = express();
 // --- CORS CONFIGURATION ---
 const allowedOrigins = [
     'http://localhost:5173',
-    process.env.FRONTEND_URL // Make sure this is set in Vercel: https://your-frontend.vercel.app
+    process.env.FRONTEND_URL
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        
         if (allowedOrigins.indexOf(origin) === -1) {
             const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
             return callback(new Error(msg), false);
         }
         return callback(null, true);
     },
-    credentials: true // This is crucial for cookies
+    credentials: true
 }));
 // --------------------------
 
@@ -64,7 +62,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Login route
+// Login route - NOW RETURNS TOKEN IN RESPONSE BODY
 app.post('/login', async (req, res) => {
     try {
         const user = await User.findOne({ username: req.body.username });
@@ -75,15 +73,10 @@ app.post('/login', async (req, res) => {
 
         const token = jwt.sign({ user: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        // FIXED: Removed partitioned, added path
-        res.cookie('token', token, {
-            httpOnly: true,    // Prevents JS from reading the cookie
-            secure: true,      // Required for HTTPS in production
-            sameSite: 'none',  // Vital for cross-site (Vercel-to-Vercel) cookies
-            path: '/',         // Make cookie available for all paths
-            maxAge: 3600000    // 1 hour
-        }).json({ 
+        // Return token in response body instead of cookie
+        res.json({ 
             message: "Logged in successfully",
+            token: token,
             user: user.username 
         });
     } catch (error) {
@@ -92,19 +85,15 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// Logout route
+// Logout route (just for consistency, frontend handles clearing localStorage)
 app.post('/logout', (req, res) => {
-    res.clearCookie('token', {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/'
-    }).json({ message: "Logged out successfully" });
+    res.json({ message: "Logged out successfully" });
 });
 
-// Profile route
-app.get('/api/user/profile', (req, res) => {
-    const token = req.cookies.token;
+// Middleware to verify JWT from Authorization header
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
         return res.status(401).json({ message: "No token provided" });
@@ -112,14 +101,20 @@ app.get('/api/user/profile', (req, res) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        res.json({
-            message: "Profile fetched successfully",
-            user: decoded 
-        });
+        req.user = decoded;
+        next();
     } catch (err) {
         console.error("TOKEN VERIFICATION ERROR:", err);
-        res.status(401).json({ message: "Invalid token" });
+        return res.status(401).json({ message: "Invalid or expired token" });
     }
+};
+
+// Profile route - NOW USES AUTHORIZATION HEADER
+app.get('/api/user/profile', authenticateToken, (req, res) => {
+    res.json({
+        message: "Profile fetched successfully",
+        user: req.user 
+    });
 });
 
 // Health check

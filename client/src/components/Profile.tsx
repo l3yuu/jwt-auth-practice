@@ -27,7 +27,10 @@ const Profile: React.FC<ProfileProps> = ({ setAuth }) => {
         setProfile(data);
       } catch {
         setError('Failed to fetch profile. Are you logged in?');
-        setAuth(false); 
+        setAuth(false);
+        // Clear localStorage on error
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
     };
 
@@ -37,12 +40,15 @@ const Profile: React.FC<ProfileProps> = ({ setAuth }) => {
   const handleLogout = async () => {
     try {
       await api.post('/logout');
-      setAuth(false);
-      
-      alert('Logged out successfully');
-      navigate('/'); 
     } catch (err) {
       console.error("Logout failed", err);
+    } finally {
+      // Always clear localStorage and update state
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setAuth(false);
+      alert('Logged out successfully');
+      navigate('/'); 
     }
   };
 

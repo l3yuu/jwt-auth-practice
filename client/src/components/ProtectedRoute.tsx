@@ -6,7 +6,10 @@ interface Props {
 }
 
 const ProtectedRoute: React.FC<Props> = ({ isAuthenticated }) => {
-  return isAuthenticated ? <Outlet /> : <Navigate to="/" replace />;
+  // Double-check localStorage as well
+  const token = localStorage.getItem('token');
+  
+  return (isAuthenticated && token) ? <Outlet /> : <Navigate to="/" replace />;
 };
 
 export default ProtectedRoute;

@@ -9,21 +9,33 @@ import api from './services/api';
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  // Check if the user is already logged in via cookie on mount
-useEffect(() => {
-  const checkAuth = async () => {
-    try {
-      // If this succeeds, the user is logged in
-      await api.get('/api/user/profile');
-      setIsAuthenticated(true);
-    } catch {
-      setIsAuthenticated(false); // This moves you past the "Loading" screen
-    }
-  };
-  checkAuth();
-}, []);
+  // Check if the user is already logged in via token on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      
+      // If no token, user is not authenticated
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
 
-  // Show nothing while checking authentication status
+      try {
+        // Verify token with backend
+        await api.get('/api/user/profile');
+        setIsAuthenticated(true);
+      } catch {
+        // Token is invalid or expired
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
+  // Show loading while checking authentication status
   if (isAuthenticated === null) return <div>Loading...</div>;
 
   return (

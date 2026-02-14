@@ -1,27 +1,48 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
+import { AxiosError } from 'axios';
 
 interface LoginProps {
   setAuth: (auth: boolean) => void;
 }
 
+interface ErrorResponse {
+  message: string;
+}
+
 const Login: React.FC<LoginProps> = ({ setAuth }) => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
     try {
-      await api.post('/login', { username, password });
-      setAuth(true);
+      const response = await api.post('/login', { username, password });
       
+      // Store token and user in localStorage
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', response.data.user);
+      
+      setAuth(true);
       alert('Login Successful!');
       navigate('/profile'); 
-    } catch (error) {
-      console.error("Login failed", error);
-      alert('Invalid credentials or server is down');
+    } catch (err) {
+      console.error("Login failed", err);
+      
+      // Type-safe error handling
+      if (err instanceof AxiosError && err.response?.data) {
+        const errorData = err.response.data as ErrorResponse;
+        setError(errorData.message || 'Invalid credentials or server is down');
+        alert(errorData.message || 'Invalid credentials or server is down');
+      } else {
+        setError('Invalid credentials or server is down');
+        alert('Invalid credentials or server is down');
+      }
     }
   };
 
@@ -44,6 +65,7 @@ const Login: React.FC<LoginProps> = ({ setAuth }) => {
           required 
         />
         <button type="submit">Login</button>
+        {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
       </form>
 
       <p style={{ marginTop: '1.5rem' }}>
