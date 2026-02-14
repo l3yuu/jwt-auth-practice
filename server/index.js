@@ -35,7 +35,7 @@ app.use(cookieParser());
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ Connected to MongoDB Atlas"))
-    .catch(err => console.error("❌ MongoDB Connection Error:", err));
+    .catch(err => console.error("MongoDB Connection Error:", err));
 
 // Registration route
 app.post('/register', async (req, res) => {
@@ -75,7 +75,8 @@ app.post('/login', async (req, res) => {
         res.cookie('token', token, {
             httpOnly: true,
             secure: true,   
-            sameSite: 'none', 
+            sameSite: 'none',  
+            partitioned: true, 
             maxAge: 3600000 
         }).json({ message: "Logged in successfully" });
     } catch (error) {
